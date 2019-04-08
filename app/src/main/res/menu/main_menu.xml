@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/menuGlobalChat" android:title="Global Chat" android:icon="@drawable/ic_public_24dp"/>
+    <item android:id="@+id/menuPerson" android:title="One to One" android:icon="@drawable/ic_people_24dp"/>
+</menu>
