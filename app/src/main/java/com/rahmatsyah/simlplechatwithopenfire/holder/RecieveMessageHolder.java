@@ -6,7 +6,7 @@ import android.view.View;
 import android.widget.TextView;
 
 import com.rahmatsyah.simlplechatwithopenfire.R;
-import com.rahmatsyah.simlplechatwithopenfire.model.Message;
+import com.rahmatsyah.simlplechatwithopenfire.model.MessageData;
 
 public class RecieveMessageHolder extends RecyclerView.ViewHolder {
     private TextView sender, message;
@@ -17,8 +17,12 @@ public class RecieveMessageHolder extends RecyclerView.ViewHolder {
         message = itemView.findViewById(R.id.recieveMessage);
     }
 
-    public void bind(Message message){
-        sender.setText(message.getSender().getName());
+    public void bind(MessageData message){
+        if (message.getHeding()=="sabdo"){
+            sender.setText("bella");
+        }else {
+            sender.setText(message.getHeding());
+        }
         this.message.setText(message.getMessage());
     }
 

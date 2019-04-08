@@ -6,7 +6,7 @@ import android.view.View;
 import android.widget.TextView;
 
 import com.rahmatsyah.simlplechatwithopenfire.R;
-import com.rahmatsyah.simlplechatwithopenfire.model.Message;
+import com.rahmatsyah.simlplechatwithopenfire.model.MessageData;
 
 public class SendMessageHolder extends RecyclerView.ViewHolder {
 
@@ -16,7 +16,7 @@ public class SendMessageHolder extends RecyclerView.ViewHolder {
         super(itemView);
         message = itemView.findViewById(R.id.sendMessage);
     }
-    public void bind(Message message){
+    public void bind(MessageData message){
         this.message.setText(message.getMessage());
     }
 }

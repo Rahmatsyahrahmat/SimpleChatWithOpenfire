@@ -1,4 +1,4 @@
-package com.rahmatsyah.simlplechatwithopenfire;
+package com.rahmatsyah.simlplechatwithopenfire.model;
 
 public class MessageData {
     private String heding;

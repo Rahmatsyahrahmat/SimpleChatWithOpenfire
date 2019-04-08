@@ -6,7 +6,9 @@ import android.support.v4.app.Fragment;
 import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+
 import android.util.Log;
+
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,8 +16,12 @@ import android.widget.Button;
 import android.widget.EditText;
 
 import com.rahmatsyah.simlplechatwithopenfire.AdapterOne2One;
-import com.rahmatsyah.simlplechatwithopenfire.MessageData;
+import com.rahmatsyah.simlplechatwithopenfire.adapter.MessageAdapter;
+import com.rahmatsyah.simlplechatwithopenfire.model.MessageData;
 import com.rahmatsyah.simlplechatwithopenfire.R;
+
+
+import java.util.ArrayList;
 
 import org.jivesoftware.smack.AbstractXMPPConnection;
 import org.jivesoftware.smack.ConnectionConfiguration;
@@ -35,7 +41,6 @@ import org.jxmpp.stringprep.XmppStringprepException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSession;
@@ -44,13 +49,19 @@ import javax.net.ssl.SSLSession;
  * A simple {@link Fragment} subclass.
  */
 public class OneToOneFragment extends Fragment {
+
+
+    private static final String SENDER = "rahmat";
+    private static final String RECIEVER = "sabdo";
+
     private RecyclerView recyclerView;
-    private AdapterOne2One adapterOne2One;
+    private MessageAdapter messageAdapter;
     private ArrayList<MessageData> messageData = new ArrayList<>();
     private AbstractXMPPConnection connection;
     public static final String TAG = OneToOneFragment.class.getSimpleName();
     private EditText etMessage;
     private Button btnSend;
+
 
     public OneToOneFragment() {
         // Required empty public constructor
@@ -60,20 +71,21 @@ public class OneToOneFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+
+
+
         // Inflate the layout for this fragment
         View v = inflater.inflate(R.layout.fragment_one_to_one, container, false);
 
         recyclerView = v.findViewById(R.id.rvOne);
-        adapterOne2One = new AdapterOne2One(messageData);
+        messageAdapter = new MessageAdapter(getContext(),messageData);
         etMessage = v.findViewById(R.id.etSendMessage);
         btnSend = v.findViewById(R.id.btnSend);
 
         LinearLayoutManager manager = new LinearLayoutManager(getContext());
-        DividerItemDecoration decoration = new DividerItemDecoration(getContext(), manager.getOrientation());
 
-        recyclerView.addItemDecoration(decoration);
         recyclerView.setLayoutManager(manager);
-        recyclerView.setAdapter(adapterOne2One);
+        recyclerView.setAdapter(messageAdapter);
 
         //connection
         setConnection();
@@ -84,8 +96,8 @@ public class OneToOneFragment extends Fragment {
                 String messagePesan = etMessage.getText().toString();
                 if (messagePesan.length() > 0) {
 
-                    //send message to ?
-                    sendMessage(messagePesan, "rahmat@desktop-ra3jkd5");
+                    //send message to ? Reciever
+                    sendMessage(messagePesan, RECIEVER+"@desktop-ra3jkd5");
                 }
             }
         });
@@ -109,10 +121,10 @@ public class OneToOneFragment extends Fragment {
             try {
                 chat.send(newMessage);
 
-                MessageData data = new MessageData("send", messagePesan);
-                messageData.add(data);
-                adapterOne2One = new AdapterOne2One(messageData);
-                recyclerView.setAdapter(adapterOne2One);
+                MessageData data = new MessageData(SENDER, messagePesan);
+                messageAdapter.addItem(data);
+                recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
+                etMessage.getText().clear();
             } catch (SmackException.NotConnectedException e) {
                 e.printStackTrace();
             } catch (InterruptedException e) {
@@ -148,7 +160,7 @@ public class OneToOneFragment extends Fragment {
                     e.printStackTrace();
                 }
                 XMPPTCPConnectionConfiguration config = XMPPTCPConnectionConfiguration.builder()
-                        .setUsernameAndPassword("sabdo", "1234567890")
+                        .setUsernameAndPassword(SENDER, "1234567890")
                         .setPort(5222)
                         .setSecurityMode(ConnectionConfiguration.SecurityMode.disabled)
                         .setXmppDomain(serviceName)
@@ -169,19 +181,17 @@ public class OneToOneFragment extends Fragment {
                         ChatManager chatManager = ChatManager.getInstanceFor(connection);
                         chatManager.addIncomingListener(new IncomingChatMessageListener() {
                             @Override
-                            public void newIncomingMessage(EntityBareJid from, Message message, Chat chat) {
+                            public void newIncomingMessage(EntityBareJid from, final Message message, Chat chat) {
                                 Log.i(TAG, "New message from " + from + " : " + message.getBody());
-                                MessageData data = new MessageData("received", message.getBody().toString());
-                                messageData.add(data);
-                                //now update recycler view
                                 getActivity().runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        //this ui thread important otherwise error occur
-                                        adapterOne2One = new AdapterOne2One(messageData);
-                                        recyclerView.setAdapter(adapterOne2One);
+                                        MessageData data = new MessageData(RECIEVER, message.getBody().toString());
+                                        messageAdapter.addItem(data);
+                                        recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
                                     }
                                 });
+
                             }
                         });
 
@@ -212,6 +222,7 @@ public class OneToOneFragment extends Fragment {
         }.
 
                 start();
+
 
     }
 

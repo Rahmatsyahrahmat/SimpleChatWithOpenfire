@@ -7,6 +7,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.rahmatsyah.simlplechatwithopenfire.model.MessageData;
+
 import java.util.ArrayList;
 
 public class AdapterOne2One extends RecyclerView.Adapter<AdapterOne2One.ViewHolder> {
