@@ -76,7 +76,9 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
 
 
         recyclerView = rootView.findViewById(R.id.globalRecyclerView);
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getContext());
+        linearLayoutManager.setStackFromEnd(true);
+        recyclerView.setLayoutManager(linearLayoutManager);
         messageAdapter = new MessageAdapter(getContext(),messages);
         recyclerView.setAdapter(messageAdapter);
 
@@ -98,7 +100,7 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
         }
     }
     private void send(Message message){
-        messages.add(message);
-        messageAdapter.notifyDataSetChanged();
+        messageAdapter.addItem(message);
+        recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
     }
 }
