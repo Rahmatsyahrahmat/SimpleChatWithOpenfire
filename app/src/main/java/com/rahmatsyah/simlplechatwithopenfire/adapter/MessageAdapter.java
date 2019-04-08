@@ -10,7 +10,7 @@ import android.view.ViewGroup;
 import com.rahmatsyah.simlplechatwithopenfire.R;
 import com.rahmatsyah.simlplechatwithopenfire.holder.RecieveMessageHolder;
 import com.rahmatsyah.simlplechatwithopenfire.holder.SendMessageHolder;
-import com.rahmatsyah.simlplechatwithopenfire.model.Message;
+import com.rahmatsyah.simlplechatwithopenfire.model.MessageData;
 
 import java.util.ArrayList;
 
@@ -20,9 +20,9 @@ public class MessageAdapter extends RecyclerView.Adapter {
     private static final int VIEW_TYPE_MESSAGE_RECIEVE = 2;
 
     private Context context;
-    private ArrayList<Message> messages;
+    private ArrayList<MessageData> messages;
 
-    public MessageAdapter(Context context, ArrayList<Message> messages){
+    public MessageAdapter(Context context, ArrayList<MessageData> messages){
         this.context = context;
         this.messages = messages;
 
@@ -30,8 +30,8 @@ public class MessageAdapter extends RecyclerView.Adapter {
 
     @Override
     public int getItemViewType(int position) {
-        Message message = messages.get(position);
-        if (message.getSender().getName().equals("Rahmatsyah")){
+        MessageData message = messages.get(position);
+        if (message.getHeding().equals("rahmat")){//Username
             return VIEW_TYPE_MESSAGE_SEND;
         }
         else {
@@ -59,7 +59,7 @@ public class MessageAdapter extends RecyclerView.Adapter {
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder viewHolder, int i) {
-        Message message = messages.get(i);
+        MessageData message = messages.get(i);
 
         switch (viewHolder.getItemViewType()){
             case VIEW_TYPE_MESSAGE_SEND:
@@ -75,7 +75,7 @@ public class MessageAdapter extends RecyclerView.Adapter {
     public int getItemCount() {
         return messages.size();
     }
-    public void addItem(Message message){
+    public void addItem(MessageData message){
         messages.add(message);
         notifyItemInserted(messages.size());
     }
