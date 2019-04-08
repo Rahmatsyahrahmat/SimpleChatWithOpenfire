@@ -37,6 +37,6 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
                 fragmentTransaction.replace(R.id.mainFrame, new OneToOneFragment()).commit();
                 break;
         }
-        return false;
+        return true;
     }
 }
