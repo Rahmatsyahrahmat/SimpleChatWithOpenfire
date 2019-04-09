@@ -18,7 +18,6 @@ public class MessageAdapter extends RecyclerView.Adapter {
 
     private static final int VIEW_TYPE_MESSAGE_SEND = 1;
     private static final int VIEW_TYPE_MESSAGE_RECIEVE = 2;
-
     private Context context;
     private ArrayList<MessageData> messages;
 
@@ -31,7 +30,7 @@ public class MessageAdapter extends RecyclerView.Adapter {
     @Override
     public int getItemViewType(int position) {
         MessageData message = messages.get(position);
-        if (message.getHeding().equals("rahmat")){//Username
+        if (message.getHeding().equals("sabdo")){//Username
             return VIEW_TYPE_MESSAGE_SEND;
         }
         else {
