@@ -1,7 +1,10 @@
 package com.rahmatsyah.simlplechatwithopenfire.fragment;
 
 
+import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -11,9 +14,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 
 import com.rahmatsyah.simlplechatwithopenfire.R;
 import com.rahmatsyah.simlplechatwithopenfire.adapter.MessageAdapter;
+import com.rahmatsyah.simlplechatwithopenfire.model.ChatData;
+import com.rahmatsyah.simlplechatwithopenfire.model.ImageData;
 import com.rahmatsyah.simlplechatwithopenfire.model.MessageData;
 
 import org.jivesoftware.smack.AbstractXMPPConnection;
@@ -24,14 +30,21 @@ import org.jivesoftware.smack.chat2.Chat;
 import org.jivesoftware.smack.chat2.ChatManager;
 import org.jivesoftware.smack.chat2.IncomingChatMessageListener;
 import org.jivesoftware.smack.packet.Message;
+import org.jivesoftware.smack.roster.Roster;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
+import org.jivesoftware.smackx.filetransfer.FileTransfer;
+import org.jivesoftware.smackx.filetransfer.FileTransferManager;
+import org.jivesoftware.smackx.filetransfer.OutgoingFileTransfer;
 import org.jivesoftware.smackx.mam.MamManager;
 import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.EntityBareJid;
+import org.jxmpp.jid.EntityFullJid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.stringprep.XmppStringprepException;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -40,24 +53,29 @@ import java.util.ArrayList;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSession;
 
+import static android.app.Activity.RESULT_OK;
+
 /**
  * A simple {@link Fragment} subclass.
  */
 public class OneToOneFragment extends Fragment {
 
 
-    private static final String SENDER = "sabdo";
-    private static final String RECIEVER = "rahmat";
+    private static final String SENDER = "rahmat";
+    private static final String RECIEVER = "sabdo";
     public static final String IPV4 = "192.168.1.143";
+
+    private static final int CAMERA_REQUEST = 1888;
 
 
     private RecyclerView recyclerView;
     private MessageAdapter messageAdapter;
-    private ArrayList<MessageData> messageData = new ArrayList<>();
+    private ArrayList<ChatData> chatData = new ArrayList<>();
     private AbstractXMPPConnection connection;
     public static final String TAG = OneToOneFragment.class.getSimpleName();
     private EditText etMessage;
-    private Button btnSend;
+    private Button btnSend, btnCamera;
+
 
 
     public OneToOneFragment() {
@@ -74,9 +92,11 @@ public class OneToOneFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_one_to_one, container, false);
 
         recyclerView = v.findViewById(R.id.rvOne);
-        messageAdapter = new MessageAdapter(getContext(), messageData);
+        messageAdapter = new MessageAdapter(getContext(), chatData);
         etMessage = v.findViewById(R.id.etSendMessage);
         btnSend = v.findViewById(R.id.btnSend);
+        btnCamera = v.findViewById(R.id.btnCamera);
+
 
         LinearLayoutManager manager = new LinearLayoutManager(getContext());
 
@@ -98,8 +118,36 @@ public class OneToOneFragment extends Fragment {
                 }
             }
         });
+        btnCamera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                startActivityForResult(cameraIntent,CAMERA_REQUEST);
+            }
+        });
 
         return v;
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(resultCode==RESULT_OK){
+            if (requestCode==CAMERA_REQUEST){
+                Bitmap bitmap = (Bitmap) data.getExtras().get("data");
+                ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.JPEG,75,stream);
+
+                try {
+                    sendImage(RECIEVER+"@desktop-ra3jkd5",bitmap,"percobaan");
+                    ImageData imageData = new ImageData(SENDER, bitmap);
+                    messageAdapter.addItem(imageData);
+                    recyclerView.scrollToPosition(messageAdapter.getItemCount() - 1);
+                } catch (XMPPException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     private void sendMessage(String messagePesan, String user) {
@@ -226,7 +274,8 @@ public class OneToOneFragment extends Fragment {
                         ChatManager chatManager = ChatManager.getInstanceFor(connection);
                         chatManager.addIncomingListener(new IncomingChatMessageListener() {
                             @Override
-                            public void newIncomingMessage(EntityBareJid from, final Message message, Chat chat) {
+                            public void newIncomingMessage(final EntityBareJid from, final Message message, Chat chat) {
+
                                 Log.i(TAG, "New message from " + from + " : " + message.getBody());
                                 getActivity().runOnUiThread(new Runnable() {
                                     @Override
@@ -269,6 +318,34 @@ public class OneToOneFragment extends Fragment {
                 start();
 
 
+
+    }
+
+    public void sendImage(String user, Bitmap bitmap, String filename) throws XMPPException {
+        Roster roster = Roster.getInstanceFor(connection);
+
+        EntityFullJid jid = null;
+        try {
+            jid = JidCreate.entityFullFrom(user);
+            Log.i("coba",jid.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+//        String destination = roster.getPresence(jid).getFrom();
+        // Create the file transfer manager
+        FileTransferManager manager = FileTransferManager.getInstanceFor(connection);
+        // Create the outgoing file transfer
+        final OutgoingFileTransfer transfer = manager.createOutgoingFileTransfer(jid);
+        // Send the file
+        //transfer.sendFile(new File("abc.txt"), "You won't believe this!");
+        transfer.sendStream(new ByteArrayInputStream(convertFileToByte(bitmap)), filename, convertFileToByte(bitmap).length, "A greeting");
+
+    }
+    public byte[] convertFileToByte(Bitmap bmp) {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, stream);
+        return stream.toByteArray();
     }
 
 }

@@ -13,16 +13,12 @@ public class RecieveMessageHolder extends RecyclerView.ViewHolder {
 
     public RecieveMessageHolder(@NonNull View itemView) {
         super(itemView);
-        sender = itemView.findViewById(R.id.recieveName);
-        message = itemView.findViewById(R.id.recieveMessage);
+        sender = itemView.findViewById(R.id.recieveMessageName);
+        message = itemView.findViewById(R.id.recieveMessageBody);
     }
 
     public void bind(MessageData message){
-        if (message.getHeding()=="sabdo"){
-            sender.setText("bella");
-        }else {
-            sender.setText(message.getHeding());
-        }
+        sender.setText(message.getHeding());
         this.message.setText(message.getMessage());
     }
 
