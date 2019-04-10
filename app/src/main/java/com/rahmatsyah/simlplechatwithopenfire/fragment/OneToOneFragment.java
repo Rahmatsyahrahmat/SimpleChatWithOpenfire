@@ -46,9 +46,9 @@ import javax.net.ssl.SSLSession;
 public class OneToOneFragment extends Fragment {
 
 
-    private static final String SENDER = "sabdo";
-    private static final String RECIEVER = "rahmat";
-    public static final String IPV4 = "192.168.1.143";
+    private static final String SENDER = "rahmat";
+    private static final String RECIEVER = "renal";
+    public static final String IPV4 = "192.168.1.169";
 
 
     private RecyclerView recyclerView;
@@ -94,7 +94,7 @@ public class OneToOneFragment extends Fragment {
                 if (messagePesan.length() > 0) {
 
                     //send message to ? Reciever
-                    sendMessage(messagePesan, RECIEVER + "@desktop-ra3jkd5");
+                    sendMessage(messagePesan, RECIEVER + "@desktop-m97vqsb");
                 }
             }
         });
@@ -141,33 +141,42 @@ public class OneToOneFragment extends Fragment {
         MamManager.MamQueryResult r = null;
         try {
             r = manager.mostRecentPage(jid, 10);
+            Log.i("ini", "z");
+
+            if (r.forwardedMessages.size() >= 1) //printing first of them
+            {
+                for (int i = 0; i < r.forwardedMessages.size(); i++) {
+                    Message message = (Message) r.forwardedMessages.get(i).getForwardedStanza();
+                    Log.i("mam", "message received" + message.getBody());
+
+                    final MessageData data = new MessageData(message.getFrom().toString().split("@")[0], message.getBody());
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            messageAdapter.addItem(data);
+                        }
+                    });
+                }
+
+            }
         } catch (XMPPException.XMPPErrorException e) {
+            Log.i("ini", e.getMessage());
             e.printStackTrace();
         } catch (SmackException.NotLoggedInException e) {
+            Log.i("ini", "b");
             e.printStackTrace();
         } catch (SmackException.NotConnectedException e) {
+            Log.i("ini", "c");
             e.printStackTrace();
         } catch (InterruptedException e) {
+            Log.i("ini", "d");
             e.printStackTrace();
         } catch (SmackException.NoResponseException e) {
+            Log.i("ini", "e");
             e.printStackTrace();
         }
-        if (r.forwardedMessages.size() >= 1) //printing first of them
-        {
-            for (int i = 0; i < r.forwardedMessages.size(); i++) {
-                Message message = (Message) r.forwardedMessages.get(i).getForwardedStanza();
-                Log.i("mam", "message received" + message.getBody());
 
-                final MessageData data = new MessageData(message.getFrom().toString().split("@")[0], message.getBody());
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        messageAdapter.addItem(data);
-                    }
-                });
-            }
 
-        }
     }
 
     private void sendFile(String user) {
@@ -202,7 +211,7 @@ public class OneToOneFragment extends Fragment {
                     e.printStackTrace();
                 }
                 XMPPTCPConnectionConfiguration config = XMPPTCPConnectionConfiguration.builder()
-                        .setUsernameAndPassword(SENDER, "1234567890")
+                        .setUsernameAndPassword(SENDER, "12345678")
                         .setPort(5222)
                         .setSecurityMode(ConnectionConfiguration.SecurityMode.disabled)
                         .setXmppDomain(serviceName)
@@ -220,7 +229,7 @@ public class OneToOneFragment extends Fragment {
                         Log.e(TAG, "run : auth done and connect success");
 
                         //get history chat
-                        oldMessage(RECIEVER + "@desktop-ra3jkd5");
+                        oldMessage(RECIEVER + "@desktop-m97vqsb");
 
 // Assume we've created an XMPPConnection name "connection"._
                         ChatManager chatManager = ChatManager.getInstanceFor(connection);
@@ -242,24 +251,16 @@ public class OneToOneFragment extends Fragment {
 
                     }
                 } catch (
-                        SmackException e)
-
-                {
+                        SmackException e) {
                     e.printStackTrace();
                 } catch (
-                        IOException e)
-
-                {
+                        IOException e) {
                     e.printStackTrace();
                 } catch (
-                        XMPPException e)
-
-                {
+                        XMPPException e) {
                     e.printStackTrace();
                 } catch (
-                        InterruptedException e)
-
-                {
+                        InterruptedException e) {
                     e.printStackTrace();
                 }
 
