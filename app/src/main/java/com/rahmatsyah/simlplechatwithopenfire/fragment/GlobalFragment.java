@@ -18,16 +18,26 @@ import com.rahmatsyah.simlplechatwithopenfire.model.MessageGlobal;
 
 import org.jivesoftware.smack.AbstractXMPPConnection;
 import org.jivesoftware.smack.ConnectionConfiguration;
+import org.jivesoftware.smack.MessageListener;
 import org.jivesoftware.smack.SmackException;
+import org.jivesoftware.smack.StanzaListener;
+import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
+import org.jivesoftware.smack.filter.MessageTypeFilter;
+import org.jivesoftware.smack.filter.PacketFilter;
+import org.jivesoftware.smack.filter.StanzaTypeFilter;
 import org.jivesoftware.smack.packet.Message;
+import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
+import org.jivesoftware.smackx.muc.InvitationListener;
 import org.jivesoftware.smackx.muc.MultiUserChat;
 import org.jivesoftware.smackx.muc.MultiUserChatException;
 import org.jivesoftware.smackx.muc.MultiUserChatManager;
+import org.jivesoftware.smackx.muc.packet.MUCUser;
 import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.EntityBareJid;
+import org.jxmpp.jid.EntityJid;
 import org.jxmpp.jid.FullJid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.jid.parts.Resourcepart;
@@ -184,6 +194,9 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
                         //join group
                         joinGroup(mucJid, nickname, otherJid);
 
+                        //get message
+                        getMessage(mucJid);
+
                     }
                 } catch (
                         SmackException e)
@@ -212,6 +225,21 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
 
                 start();
 
+    }
+
+    private void getMessage(EntityBareJid mucJid) {
+        StanzaTypeFilter filter = new StanzaTypeFilter(Message.class);
+        connection.addSyncStanzaListener(new StanzaListener() {
+            @Override
+            public void processStanza(Stanza packet) throws SmackException.NotConnectedException, InterruptedException, SmackException.NotLoggedInException {
+                Message message = (Message) packet;
+                if(message.getBody() != null){
+                    MessageGlobal data = new MessageGlobal(message.getFrom().toString(), message.getBody().toString());
+                    adapterGlobal.addItem(data);
+                    recyclerView.setAdapter(adapterGlobal);
+                }
+            }
+        }, filter);
     }
 
     private void joinGroup(EntityBareJid mucJid, Resourcepart nickname, FullJid otherJid) {
