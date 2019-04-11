@@ -14,7 +14,7 @@ public class SendMessageHolder extends RecyclerView.ViewHolder {
 
     public SendMessageHolder(@NonNull View itemView) {
         super(itemView);
-        message = itemView.findViewById(R.id.sendMessage);
+        message = itemView.findViewById(R.id.sendMessageBody);
     }
     public void bind(MessageData message){
         this.message.setText(message.getMessage());
