@@ -46,8 +46,8 @@ import javax.net.ssl.SSLSession;
 public class OneToOneFragment extends Fragment {
 
 
-    private static final String SENDER = "sabdo";
-    private static final String RECIEVER = "rahmat";
+    private static final String SENDER = "rahmat";
+    private static final String RECIEVER = "dhani";
     public static final String IPV4 = "192.168.1.143";
 
 
@@ -58,6 +58,7 @@ public class OneToOneFragment extends Fragment {
     public static final String TAG = OneToOneFragment.class.getSimpleName();
     private EditText etMessage;
     private Button btnSend;
+
 
 
     public OneToOneFragment() {
