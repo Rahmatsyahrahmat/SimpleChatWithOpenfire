@@ -29,6 +29,12 @@
             android:id="@+id/btnSendGlobal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
+        <Button
+            android:text="Invite"
+            android:id="@+id/btnInviteGlobal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
     </LinearLayout>
 
 </LinearLayout>

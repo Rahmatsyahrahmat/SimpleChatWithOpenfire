@@ -41,7 +41,7 @@ public class AdapterGlobal extends RecyclerView.Adapter<AdapterGlobal.ViewHolder
 
     public void addItem(MessageGlobal message) {
         items.add(message);
-        notifyItemInserted(items.size());
+        notifyDataSetChanged();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {

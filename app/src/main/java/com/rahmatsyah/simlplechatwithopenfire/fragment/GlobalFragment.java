@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import com.rahmatsyah.simlplechatwithopenfire.R;
 import com.rahmatsyah.simlplechatwithopenfire.adapter.AdapterGlobal;
@@ -18,27 +19,21 @@ import com.rahmatsyah.simlplechatwithopenfire.model.MessageGlobal;
 
 import org.jivesoftware.smack.AbstractXMPPConnection;
 import org.jivesoftware.smack.ConnectionConfiguration;
-import org.jivesoftware.smack.MessageListener;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.StanzaListener;
-import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
-import org.jivesoftware.smack.filter.MessageTypeFilter;
-import org.jivesoftware.smack.filter.PacketFilter;
 import org.jivesoftware.smack.filter.StanzaTypeFilter;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
-import org.jivesoftware.smackx.muc.InvitationListener;
+import org.jivesoftware.smackx.muc.InvitationRejectionListener;
 import org.jivesoftware.smackx.muc.MultiUserChat;
 import org.jivesoftware.smackx.muc.MultiUserChatException;
 import org.jivesoftware.smackx.muc.MultiUserChatManager;
 import org.jivesoftware.smackx.muc.packet.MUCUser;
 import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.EntityBareJid;
-import org.jxmpp.jid.EntityJid;
-import org.jxmpp.jid.FullJid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.jid.parts.Resourcepart;
 import org.jxmpp.stringprep.XmppStringprepException;
@@ -53,26 +48,25 @@ import javax.net.ssl.SSLSession;
 
 /**
  * A simple {@link Fragment} subclass.
+ * <p>
+ * maafkan aku menduakan hatimu,
+ * adakah kesempatan kedua?
  */
 public class GlobalFragment extends Fragment implements View.OnClickListener {
 
     public static final int PORT = 5222;
-    private static final String SENDER = "rahmat";
-    private static final String RECIEVER = "dhani";
-    public static final String IPV4 = "192.168.0.138";
-    public static final String SERVICE = "desktop-ra3jkd5";
+    private static final String SENDER = "sabdo";
+    private static final String USER_LAIN = "dila";
+    public static final String IPV4 = "192.168.100.119";
+    public static final String ROOM = "coba@conference.desktop-ra3jkd5";
 
-    String mNickName;
-    String mGroupChatName;
-    private MultiUserChat multiUserChat;
     private AbstractXMPPConnection connection;
-    private ConnectionConfiguration connectionConfiguration;
 
     private RecyclerView recyclerView;
     private ArrayList<MessageGlobal> messageData = new ArrayList<>();
     private AdapterGlobal adapterGlobal;
     private EditText etGlobal;
-    private Button btnSendGlobal;
+    private Button btnSendGlobal, btnInvite;
 
     public GlobalFragment() {
         // Required empty public constructor
@@ -87,6 +81,7 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
         adapterGlobal = new AdapterGlobal(messageData);
         etGlobal = v.findViewById(R.id.etSendMessageGlobal);
         btnSendGlobal = v.findViewById(R.id.btnSendGlobal);
+        btnInvite = v.findViewById(R.id.btnInviteGlobal);
 
         LinearLayoutManager manager = new LinearLayoutManager(getContext());
         recyclerView.setLayoutManager(manager);
@@ -100,12 +95,68 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
             public void onClick(View v) {
                 String message = etGlobal.getText().toString();
                 if (message.length() >= 1) {
-                    sendMessage(message, "coba@conference.desktop-ra3jkd5");
+                    sendMessage(message, ROOM);
                 }
             }
         });
 
+
+        //inivite
+        btnInvite.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                EntityBareJid mucJid = null;
+                try {
+                    Log.i("InviteUser", "Mulai");
+
+                    mucJid = (EntityBareJid) JidCreate.bareFrom(ROOM);
+                    EntityBareJid otherJid = JidCreate.entityBareFrom(USER_LAIN+"@desktop-ra3jkd5");
+                    inviteUser(mucJid, USER_LAIN, otherJid);
+
+                } catch (XmppStringprepException e) {
+                    Log.i("InviteUser", e.getMessage());
+                    e.printStackTrace();
+                }
+//                Toast.makeText(getContext(), "Invite", Toast.LENGTH_SHORT).show();
+            }
+        });
+
         return v;
+    }
+
+    //nickname = bambang, otherId = bambang@desktop
+    private void inviteUser(EntityBareJid mucJid, String nickname, EntityBareJid otherJid) {
+        Log.i("InviteUser", "Tidak masuk");
+        if (connection != null) {
+            MultiUserChatManager manager = MultiUserChatManager.getInstanceFor(connection);
+            MultiUserChat muc = manager.getMultiUserChat(mucJid);
+
+            //get nickname
+
+//                Resourcepart nick = Resourcepart.from(nickname);
+//                muc.join(nick);
+
+                //reject invitation
+                muc.addInvitationRejectionListener(new InvitationRejectionListener() {
+                    @Override
+                    public void invitationDeclined(EntityBareJid invitee, String reason, Message message, MUCUser.Decline rejection) {
+                        Toast.makeText(getContext(), "Invit Di tolak " + message, Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+            try {
+                muc.invite(otherJid, "Gabung Dengan Group COBA");
+                Log.i("InviteUser", "Bisa");
+            } catch (SmackException.NotConnectedException e) {
+                Log.i("InviteUser", e.getMessage());
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                Log.i("InviteUser", e.getMessage());
+                e.printStackTrace();
+            }
+            Log.i("InviteUser", "Masuk");
+
+        }
     }
 
     private void sendMessage(String message, String room) {
@@ -185,17 +236,17 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
                         Log.i("koneksi", "run : auth done and connect success");
 
 // Assume we've created an XMPPConnection name "connection"._
-                        // Create the XMPP address (JID) of the MUC.
-                        EntityBareJid mucJid = (EntityBareJid) JidCreate.bareFrom("coba@conference.desktop-ra3jkd5");
+                        // Crate the XMPP address (JID) of the MUC.
+                        EntityBareJid mucJid = (EntityBareJid) JidCreate.bareFrom(ROOM);
 // Create the nickname.
                         Resourcepart nickname = Resourcepart.from(SENDER);
 // A other use (we may invite him to a MUC).
-                        FullJid otherJid = JidCreate.fullFrom(SENDER + "@desktop-ra3jkd5/Smack");
                         //join group
-                        joinGroup(mucJid, nickname, otherJid);
+                        joinGroup(mucJid, nickname);
 
                         //get message
-                        getMessage(mucJid);
+                        getMessage();
+
 
                     }
                 } catch (
@@ -227,22 +278,29 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
 
     }
 
-    private void getMessage(EntityBareJid mucJid) {
-        StanzaTypeFilter filter = new StanzaTypeFilter(Message.class);
-        connection.addSyncStanzaListener(new StanzaListener() {
+    private void getMessage() {
+        getActivity().runOnUiThread(new Runnable() {
             @Override
-            public void processStanza(Stanza packet) throws SmackException.NotConnectedException, InterruptedException, SmackException.NotLoggedInException {
-                Message message = (Message) packet;
-                if(message.getBody() != null){
-                    MessageGlobal data = new MessageGlobal(message.getFrom().toString(), message.getBody().toString());
-                    adapterGlobal.addItem(data);
-                    recyclerView.setAdapter(adapterGlobal);
-                }
+            public void run() {
+                StanzaTypeFilter filter = new StanzaTypeFilter(Message.class);
+                connection.addSyncStanzaListener(new StanzaListener() {
+                    @Override
+                    public void processStanza(Stanza packet) throws SmackException.NotConnectedException, InterruptedException, SmackException.NotLoggedInException {
+                        Message message = (Message) packet;
+                        if (message.getBody() != null) {
+                            Log.i("GetOldMessageGlobal", "Masuk");
+                            MessageGlobal data = new MessageGlobal(message.getFrom().toString(), message.getBody().toString());
+                            adapterGlobal.addItem(data);
+                            recyclerView.setAdapter(adapterGlobal);
+                        }
+                    }
+                }, filter);
             }
-        }, filter);
+        });
+
     }
 
-    private void joinGroup(EntityBareJid mucJid, Resourcepart nickname, FullJid otherJid) {
+    private void joinGroup(EntityBareJid mucJid, Resourcepart nickname) {
         MultiUserChatManager manager = MultiUserChatManager.getInstanceFor(connection);
         MultiUserChat muc2 = manager.getMultiUserChat(mucJid);
         try {

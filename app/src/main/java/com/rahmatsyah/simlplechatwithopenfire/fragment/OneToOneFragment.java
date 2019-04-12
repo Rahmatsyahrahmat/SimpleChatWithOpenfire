@@ -46,9 +46,9 @@ import javax.net.ssl.SSLSession;
 public class OneToOneFragment extends Fragment {
 
 
-    private static final String SENDER = "rahmat";
-    private static final String RECIEVER = "dhani";
-    public static final String IPV4 = "192.168.1.143";
+    private static final String SENDER = "sabdo";
+    private static final String RECIEVER = "bambang";
+    public static final String IPV4 = "192.168.100.119";
 
 
     private RecyclerView recyclerView;
