@@ -1,13 +1,18 @@
 package com.rahmatsyah.simlplechatwithopenfire.fragment;
 
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -17,6 +22,9 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
 
+import com.jaiselrahman.filepicker.activity.FilePickerActivity;
+import com.jaiselrahman.filepicker.config.Configurations;
+import com.jaiselrahman.filepicker.model.MediaFile;
 import com.rahmatsyah.simlplechatwithopenfire.R;
 import com.rahmatsyah.simlplechatwithopenfire.adapter.MessageAdapter;
 import com.rahmatsyah.simlplechatwithopenfire.model.ChatData;
@@ -24,6 +32,10 @@ import com.rahmatsyah.simlplechatwithopenfire.model.FileData;
 import com.rahmatsyah.simlplechatwithopenfire.model.ImageData;
 import com.rahmatsyah.simlplechatwithopenfire.model.MessageData;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.jivesoftware.smack.AbstractXMPPConnection;
 import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.SmackException;
@@ -47,11 +59,17 @@ import org.jxmpp.jid.EntityFullJid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.jid.parts.Resourcepart;
 import org.jxmpp.stringprep.XmppStringprepException;
+import org.jxmpp.util.XmppStringUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FilePermission;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -69,7 +87,7 @@ public class OneToOneFragment extends Fragment {
 
     private static final String SENDER = "renal";
     private static final String RECIEVER = "rahmat";
-    public static final String IPV4 = "192.168.1.169";
+    public static final String IPV4 = "192.168.100.142";
     private static final String RESOURCE = "resource";
     //renal RESOURCE =
     //rahmat RESOURCE =
@@ -139,17 +157,27 @@ public class OneToOneFragment extends Fragment {
         btnFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent chooseFile;
-                Intent intent;
-                chooseFile = new Intent(Intent.ACTION_GET_CONTENT);
-                chooseFile.setType("*/*");
-                intent = Intent.createChooser(chooseFile, "Choose a file");
+//                Intent chooseFile;
+//                Intent intent;
+//                chooseFile = new Intent(Intent.ACTION_GET_CONTENT);
+//                chooseFile.setType("*/*");
+//                intent = Intent.createChooser(chooseFile, "Choose a file");
+//                startActivityForResult(intent, FILE_REQUEST);
+
+                Intent intent = new Intent(getContext(), FilePickerActivity.class);
+                intent.putExtra(FilePickerActivity.CONFIGS, new Configurations.Builder()
+                        .setShowFiles(true)
+                        .setCheckPermission(true)
+                        .setMaxSelection(1)
+                        .setSkipZeroSizeFiles(true)
+                        .build());
                 startActivityForResult(intent, FILE_REQUEST);
             }
         });
 
         return v;
     }
+
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -170,15 +198,32 @@ public class OneToOneFragment extends Fragment {
                 }
             }
             else if (requestCode==FILE_REQUEST){
-                Uri uri = data.getData();
-                File file = new File((uri.getPath()));
-                sendFile(RECIEVER+"@desktop-m97vqsb",file,"percobaan");
+                ArrayList<MediaFile> files = data.getParcelableArrayListExtra(FilePickerActivity.MEDIA_FILES);
+                Log.i("Bangsat",files.get(0).getPath());
+                File file = new File(files.get(0).getPath());
+                Log.i("Bangsat", String.valueOf(file.canRead()));
+
+                sendFile(RECIEVER+"@desktop-m97vqsb",file,file.getName());
                 FileData fileData = new FileData(SENDER,file.getName(),file);
                 messageAdapter.addItem(fileData);
                 recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
+//                Uri uri = data.getData();
+//                Log.i("Bangsat",data.getData().getPath());
+//                File file =  new File(data.getData().getPath().split(":")[1]);
+//                Log.i("Bangsat", String.valueOf(file.exists()));
+//                Log.i("Bangsat", String.valueOf(file.setExecutable(true,false)));
+//                Log.i("Bangsat", String.valueOf(file.canRead()));
+//
+//
+//
+//                sendFile(RECIEVER+"@desktop-m97vqsb",file,file.getName());
+//                FileData fileData = new FileData(SENDER,file.getName(),file);
+//                messageAdapter.addItem(fileData);
+//                recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
             }
         }
     }
+
 
     private void sendMessage(String messagePesan, String user) {
         EntityBareJid jid = null;
@@ -343,7 +388,7 @@ public class OneToOneFragment extends Fragment {
                             public void fileTransferRequest(final FileTransferRequest request) {
                                 Log.i("Namanya","masuk");
                                 final IncomingFileTransfer transfer = request.accept();
-                                File mf = Environment.getExternalStorageDirectory();
+
 //                                final File file = new File(mf.getAbsoluteFile()+"/Chat/" + transfer.getFileName());
 
                                 getActivity().runOnUiThread(new Runnable() {
@@ -358,8 +403,9 @@ public class OneToOneFragment extends Fragment {
 
                                     }
                                 });
-//                                    InputStream inputStream = transfer.recieveFile();
-//
+//                                InputStream inputStream = null;
+//                                try {
+//                                    inputStream = transfer.recieveFile();
 //                                    final Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
 //
 //                                    getActivity().runOnUiThread(new Runnable() {
@@ -369,6 +415,15 @@ public class OneToOneFragment extends Fragment {
 //                                            messageAdapter.addItem(imageData);
 //                                        }
 //                                    });
+//                                } catch (SmackException e) {
+//                                    e.printStackTrace();
+//                                } catch (XMPPException.XMPPErrorException e) {
+//                                    e.printStackTrace();
+//                                } catch (InterruptedException e) {
+//                                    e.printStackTrace();
+//                                }
+
+
 
 
                             }
@@ -437,26 +492,24 @@ public class OneToOneFragment extends Fragment {
             Log.i("coba",jid.toString());
             FileTransferManager manager = FileTransferManager.getInstanceFor(connection);
 
+
             FileTransferNegotiator.getInstanceFor(connection);
             // Create the outgoing file transfer
             final OutgoingFileTransfer transfer = manager.createOutgoingFileTransfer(jid);
             // Send the file
-            transfer.sendFile(new File("abc.txt"), "You won't believe this!");
+//            transfer.sendFile(new File("abc.txt"), "You won't believe this!");
 //            transfer.sendStream(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), filename, file.length(), "A greeting");
-            Log.i("ANJAAY", String.valueOf(transfer.isDone()));
-            outerloop:while (!transfer.isDone()) {
-                switch (transfer.getStatus()) {
-                    case error:
-                        Log.i("ANJAAY","Filetransfer error: " + transfer.getError());
-                        break outerloop;
-                    default:
-                        Log.i("ANJAAY","Filetransfer status: " + transfer.getStatus() + ". Progress: " + transfer.getProgress());
-                        break;
-                }
-                Thread.sleep(1000);
-            }
+
+
+            transfer.sendFile(file,"A greeting");
+
+//            transfer.sendStream(bytesStream,filename,file.length(),"A greeting");
+//            transfer.sendStream(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), filename, file.length(), "A greeting");
+
+
+
         } catch (Exception e) {
-            Log.i("hyhy",e.getMessage());
+            Log.i("Bangsat",e.getMessage());
         }
     }
     public byte[] convertFileToByte(Bitmap bmp) {
