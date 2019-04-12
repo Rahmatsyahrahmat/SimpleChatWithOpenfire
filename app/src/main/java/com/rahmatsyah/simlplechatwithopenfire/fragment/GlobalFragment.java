@@ -12,6 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.rahmatsyah.simlplechatwithopenfire.R;
@@ -59,9 +60,9 @@ import javax.net.ssl.SSLSession;
 public class GlobalFragment extends Fragment implements View.OnClickListener {
 
     public static final int PORT = 5222;
-    private static final String SENDER = "sabdo";
-    private static final String USER_LAIN = "dila";
-    public static final String IPV4 = "192.168.100.119";
+    private static final String SENDER = "dila";
+    //    private static final String RECEIVE = "dila";
+    public static final String IPV4 = "11.11.11.203";
     public static final String ROOM = "coba@conference.desktop-ra3jkd5";
 
     private AbstractXMPPConnection connection;
@@ -74,6 +75,9 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
 
     private EditText etNickname;
     private Button btnAccept, btnReject;
+
+    private TextView tvInvitation;
+    private Button btnAcceptRoom, btnRejectRoom;
 
     public GlobalFragment() {
         // Required empty public constructor
@@ -124,8 +128,7 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
         return v;
     }
 
-    //nickname = bambang, otherId = bambang@desktop
-    private void inviteUser(EntityBareJid mucJid, String nickname, EntityBareJid otherJid) {
+    private void inviteUser(EntityBareJid mucJid, EntityBareJid otherJid) {
         Log.i("InviteUser", "Tidak masuk");
         if (connection != null) {
             MultiUserChatManager manager = MultiUserChatManager.getInstanceFor(connection);
@@ -135,7 +138,7 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
             muc.addInvitationRejectionListener(new InvitationRejectionListener() {
                 @Override
                 public void invitationDeclined(EntityBareJid invitee, String reason, Message message, MUCUser.Decline rejection) {
-                    Toast.makeText(getContext(), "Invit Di tolak " + message, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Invite Di tolak " + message, Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -155,10 +158,10 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
         }
     }
 
-    private void alertInvite(){
+    private void alertInvite() {
         final AlertDialog alertDialog = new AlertDialog.Builder(getContext()).create();
         LayoutInflater inflater = this.getLayoutInflater();
-        final View dialogView = inflater.inflate(R.layout.alert_dialog_username,null);
+        final View dialogView = inflater.inflate(R.layout.alert_dialog_username, null);
 
         etNickname = dialogView.findViewById(R.id.etNicknameInvite);
         btnAccept = dialogView.findViewById(R.id.btnAcceptInvite);
@@ -175,10 +178,10 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
 
                     mucJid = (EntityBareJid) JidCreate.bareFrom(ROOM);
                     EntityBareJid otherJid = JidCreate.entityBareFrom(nama + "@desktop-ra3jkd5");
-                    inviteUser(mucJid, nama, otherJid);
+                    inviteUser(mucJid, otherJid);
 
                     alertDialog.dismiss();
-                    Toast.makeText(getContext(), "Invite "+nama, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Invite " + nama, Toast.LENGTH_SHORT).show();
                 } catch (XmppStringprepException e) {
                     Log.i("InviteUser", e.getMessage());
                     Toast.makeText(getContext(), "Gagal Invite ", Toast.LENGTH_SHORT).show();
@@ -235,18 +238,86 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
     }
 
 
-    private void dialogInvitRoom() {
-        AlertDialog.Builder alertDialog = new AlertDialog.Builder(getContext());
-//        alertDialog.setMessage()
+    private void getInvititaion() {
+        Log.i("InviteAlert", "Tidak masuk");
+//        getActivity().runOnUiThread(new Runnable() {
+//            @Override
+//            public void run() {
+        if (connection != null) {
+            Log.i("InviteAlert", "masuk");
+            MultiUserChatManager.getInstanceFor(connection).addInvitationListener(new InvitationListener() {
+                @Override
+                public void invitationReceived(XMPPConnection conn, final MultiUserChat room, EntityJid inviter, final String reason, String password, Message message, MUCUser.Invite invitation) {
+                    Log.i("InviteAlert", String.valueOf(room.getRoom()));
+                    Log.i("InviteAlert", String.valueOf(reason));
+//                            Toast.makeText(getContext(), "MASUK 2", Toast.LENGTH_SHORT).show();
+
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            alertInviteRoom(room.getRoom(),reason);
+                        }
+                    });
+
+                }
+            });
+        }
+//            }
+//        });
+
+
     }
 
-    private void getInvititaion() {
-        MultiUserChatManager.getInstanceFor(connection).addInvitationListener(new InvitationListener() {
-            @Override
-            public void invitationReceived(XMPPConnection conn, MultiUserChat room, EntityJid inviter, String reason, String password, Message message, MUCUser.Invite invitation) {
+    private void alertInviteRoom(final EntityBareJid room, String reason) {
+        Log.i("InviteAlert", "Masuk Alert");
 
+
+        final AlertDialog alertDialog = new AlertDialog.Builder(getContext()).create();
+        LayoutInflater inflater = this.getLayoutInflater();
+        final View dialogView = inflater.inflate(R.layout.alert_dialog_invitation, null);
+
+        tvInvitation = dialogView.findViewById(R.id.tvTitleInvitation);
+        btnAcceptRoom = dialogView.findViewById(R.id.btnAcceptRoom);
+        btnRejectRoom = dialogView.findViewById(R.id.btnRejectRoom);
+
+        tvInvitation.setText(String.valueOf(reason));
+
+        btnAcceptRoom.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Crate the XMPP address (JID) of the MUC.
+                EntityBareJid mucJid = null;
+                try {
+                    mucJid = (EntityBareJid) JidCreate.bareFrom(room);
+                    Resourcepart nickname = Resourcepart.from(SENDER);
+
+                    //join room
+                    joinGroup(mucJid, nickname);
+
+                    //get old message
+                    getMessage();
+                } catch (XmppStringprepException e) {
+                    e.printStackTrace();
+                }
+
+                alertDialog.dismiss();
             }
         });
+
+        btnRejectRoom.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+//                room.removeInvitationRejectionListener(new InvitationRejectionListener() {
+//                    @Override
+//                    public void invitationDeclined(EntityBareJid invitee, String reason, Message message, MUCUser.Decline rejection) {
+//
+//                    }
+//                });
+                alertDialog.dismiss();
+            }
+        });
+        alertDialog.setView(dialogView);
+        alertDialog.show();
     }
 
     private void setConnection() {
@@ -259,6 +330,7 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
                     //inter ip4
                     addr = InetAddress.getByName(IPV4);
                 } catch (UnknownHostException e) {
+                    Log.i("InetAddress", e.getMessage());
                     e.printStackTrace();
                 }
                 HostnameVerifier verifier = new HostnameVerifier() {
@@ -271,6 +343,7 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
                 try {
                     serviceName = JidCreate.domainBareFrom(IPV4);
                 } catch (XmppStringprepException e) {
+                    Log.i("DomainBareJid", e.getMessage());
                     e.printStackTrace();
                 }
                 XMPPTCPConnectionConfiguration config = XMPPTCPConnectionConfiguration.builder()
@@ -284,6 +357,7 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
                         .build();
                 connection = new XMPPTCPConnection(config);
 
+
                 try {
                     connection.connect();
 
@@ -292,46 +366,39 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
                         Log.i("koneksi", "run : auth done and connect success");
 
 // Assume we've created an XMPPConnection name "connection"._
-                        // Crate the XMPP address (JID) of the MUC.
-                        EntityBareJid mucJid = (EntityBareJid) JidCreate.bareFrom(ROOM);
-// Create the nickname.
-                        Resourcepart nickname = Resourcepart.from(SENDER);
-// A other use (we may invite him to a MUC).
-                        //join group
-                        joinGroup(mucJid, nickname);
 
                         //get message
-                        getMessage();
+//                        EntityBareJid mucJid = null;
+//                        try {
+//                            mucJid = (EntityBareJid) JidCreate.bareFrom(ROOM);
+//                            Resourcepart nickname = Resourcepart.from(SENDER);
+//
+//                            //join room
+//                            joinGroup(mucJid, nickname);
+//
+//                            //get old message
+//                            getMessage();
+//                        } catch (XmppStringprepException e) {
+//                            e.printStackTrace();
+//                        }
 
-
+                        getInvititaion();
                     }
-                } catch (
-                        SmackException e)
-
-                {
+                } catch (SmackException e) {
+                    Log.i("koneksi", e.getMessage());
                     e.printStackTrace();
-                } catch (
-                        IOException e)
-
-                {
+                } catch (IOException e) {
+                    Log.i("koneksi", e.getMessage());
                     e.printStackTrace();
-                } catch (
-                        XMPPException e)
-
-                {
+                } catch (XMPPException e) {
+                    Log.i("koneksi", e.getMessage());
                     e.printStackTrace();
-                } catch (
-                        InterruptedException e)
-
-                {
+                } catch (InterruptedException e) {
+                    Log.i("koneksi", e.getMessage());
                     e.printStackTrace();
                 }
-
             }
-        }.
-
-                start();
-
+        }.start();
     }
 
     private void getMessage() {
