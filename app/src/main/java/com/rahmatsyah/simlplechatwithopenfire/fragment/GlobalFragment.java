@@ -1,6 +1,7 @@
 package com.rahmatsyah.simlplechatwithopenfire.fragment;
 
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
@@ -21,12 +22,14 @@ import org.jivesoftware.smack.AbstractXMPPConnection;
 import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.StanzaListener;
+import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.filter.StanzaTypeFilter;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Stanza;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
+import org.jivesoftware.smackx.muc.InvitationListener;
 import org.jivesoftware.smackx.muc.InvitationRejectionListener;
 import org.jivesoftware.smackx.muc.MultiUserChat;
 import org.jivesoftware.smackx.muc.MultiUserChatException;
@@ -34,6 +37,7 @@ import org.jivesoftware.smackx.muc.MultiUserChatManager;
 import org.jivesoftware.smackx.muc.packet.MUCUser;
 import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.EntityBareJid;
+import org.jxmpp.jid.EntityJid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.jid.parts.Resourcepart;
 import org.jxmpp.stringprep.XmppStringprepException;
@@ -68,6 +72,9 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
     private EditText etGlobal;
     private Button btnSendGlobal, btnInvite;
 
+    private EditText etNickname;
+    private Button btnAccept, btnReject;
+
     public GlobalFragment() {
         // Required empty public constructor
     }
@@ -81,7 +88,9 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
         adapterGlobal = new AdapterGlobal(messageData);
         etGlobal = v.findViewById(R.id.etSendMessageGlobal);
         btnSendGlobal = v.findViewById(R.id.btnSendGlobal);
+        //invite
         btnInvite = v.findViewById(R.id.btnInviteGlobal);
+
 
         LinearLayoutManager manager = new LinearLayoutManager(getContext());
         recyclerView.setLayoutManager(manager);
@@ -105,19 +114,10 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
         btnInvite.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                EntityBareJid mucJid = null;
-                try {
-                    Log.i("InviteUser", "Mulai");
 
-                    mucJid = (EntityBareJid) JidCreate.bareFrom(ROOM);
-                    EntityBareJid otherJid = JidCreate.entityBareFrom(USER_LAIN+"@desktop-ra3jkd5");
-                    inviteUser(mucJid, USER_LAIN, otherJid);
-
-                } catch (XmppStringprepException e) {
-                    Log.i("InviteUser", e.getMessage());
-                    e.printStackTrace();
-                }
 //                Toast.makeText(getContext(), "Invite", Toast.LENGTH_SHORT).show();
+
+                alertInvite();
             }
         });
 
@@ -131,22 +131,18 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
             MultiUserChatManager manager = MultiUserChatManager.getInstanceFor(connection);
             MultiUserChat muc = manager.getMultiUserChat(mucJid);
 
-            //get nickname
-
-//                Resourcepart nick = Resourcepart.from(nickname);
-//                muc.join(nick);
-
-                //reject invitation
-                muc.addInvitationRejectionListener(new InvitationRejectionListener() {
-                    @Override
-                    public void invitationDeclined(EntityBareJid invitee, String reason, Message message, MUCUser.Decline rejection) {
-                        Toast.makeText(getContext(), "Invit Di tolak " + message, Toast.LENGTH_SHORT).show();
-                    }
-                });
+            //reject invitation
+            muc.addInvitationRejectionListener(new InvitationRejectionListener() {
+                @Override
+                public void invitationDeclined(EntityBareJid invitee, String reason, Message message, MUCUser.Decline rejection) {
+                    Toast.makeText(getContext(), "Invit Di tolak " + message, Toast.LENGTH_SHORT).show();
+                }
+            });
 
             try {
                 muc.invite(otherJid, "Gabung Dengan Group COBA");
                 Log.i("InviteUser", "Bisa");
+
             } catch (SmackException.NotConnectedException e) {
                 Log.i("InviteUser", e.getMessage());
                 e.printStackTrace();
@@ -157,6 +153,51 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
             Log.i("InviteUser", "Masuk");
 
         }
+    }
+
+    private void alertInvite(){
+        final AlertDialog alertDialog = new AlertDialog.Builder(getContext()).create();
+        LayoutInflater inflater = this.getLayoutInflater();
+        final View dialogView = inflater.inflate(R.layout.alert_dialog_username,null);
+
+        etNickname = dialogView.findViewById(R.id.etNicknameInvite);
+        btnAccept = dialogView.findViewById(R.id.btnAcceptInvite);
+        btnReject = dialogView.findViewById(R.id.btnRejectInvite);
+
+        btnAccept.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                EntityBareJid mucJid = null;
+                try {
+                    Log.i("InviteUser", "Mulai");
+
+                    String nama = etNickname.getText().toString();
+
+                    mucJid = (EntityBareJid) JidCreate.bareFrom(ROOM);
+                    EntityBareJid otherJid = JidCreate.entityBareFrom(nama + "@desktop-ra3jkd5");
+                    inviteUser(mucJid, nama, otherJid);
+
+                    alertDialog.dismiss();
+                    Toast.makeText(getContext(), "Invite "+nama, Toast.LENGTH_SHORT).show();
+                } catch (XmppStringprepException e) {
+                    Log.i("InviteUser", e.getMessage());
+                    Toast.makeText(getContext(), "Gagal Invite ", Toast.LENGTH_SHORT).show();
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        btnReject.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(getContext(), "Cancel", Toast.LENGTH_SHORT).show();
+                alertDialog.dismiss();
+            }
+        });
+
+        alertDialog.setView(dialogView);
+        alertDialog.show();
+
     }
 
     private void sendMessage(String message, String room) {
@@ -191,6 +232,21 @@ public class GlobalFragment extends Fragment implements View.OnClickListener {
         }
 
 
+    }
+
+
+    private void dialogInvitRoom() {
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(getContext());
+//        alertDialog.setMessage()
+    }
+
+    private void getInvititaion() {
+        MultiUserChatManager.getInstanceFor(connection).addInvitationListener(new InvitationListener() {
+            @Override
+            public void invitationReceived(XMPPConnection conn, MultiUserChat room, EntityJid inviter, String reason, String password, Message message, MUCUser.Invite invitation) {
+
+            }
+        });
     }
 
     private void setConnection() {
