@@ -10,9 +10,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.widget.LinearLayoutCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -21,7 +23,18 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.storage.FileDownloadTask;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.StreamDownloadTask;
+import com.google.firebase.storage.UploadTask;
 import com.jaiselrahman.filepicker.activity.FilePickerActivity;
 import com.jaiselrahman.filepicker.config.Configurations;
 import com.jaiselrahman.filepicker.model.MediaFile;
@@ -31,6 +44,10 @@ import com.rahmatsyah.simlplechatwithopenfire.model.ChatData;
 import com.rahmatsyah.simlplechatwithopenfire.model.FileData;
 import com.rahmatsyah.simlplechatwithopenfire.model.ImageData;
 import com.rahmatsyah.simlplechatwithopenfire.model.MessageData;
+import com.vansuita.pickimage.bean.PickResult;
+import com.vansuita.pickimage.bundle.PickSetup;
+import com.vansuita.pickimage.dialog.PickImageDialog;
+import com.vansuita.pickimage.listeners.IPickResult;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -73,6 +90,7 @@ import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Date;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSession;
@@ -82,19 +100,18 @@ import static android.app.Activity.RESULT_OK;
 /**
  * A simple {@link Fragment} subclass.
  */
-public class OneToOneFragment extends Fragment {
+public class OneToOneFragment extends Fragment{
 
 
     private static final String SENDER = "renal";
     private static final String RECIEVER = "rahmat";
     public static final String IPV4 = "192.168.100.142";
-    private static final String RESOURCE = "resource";
-    //renal RESOURCE =
-    //rahmat RESOURCE =
+    private static final String RESOURCE = "/resource";
+    private static final String DOMAIN = "@desktop-m97vqsb";
 
-    private static final int CAMERA_REQUEST = 1888;
     private static final int FILE_REQUEST = 2888;
 
+    private boolean isReceive = false;
 
     private RecyclerView recyclerView;
     private MessageAdapter messageAdapter;
@@ -103,6 +120,8 @@ public class OneToOneFragment extends Fragment {
     public static final String TAG = OneToOneFragment.class.getSimpleName();
     private EditText etMessage;
     private ImageView btnSend, btnCamera, btnFile;
+
+    private StorageReference storageReference;
 
 
 
@@ -119,8 +138,9 @@ public class OneToOneFragment extends Fragment {
         // Inflate the layout for this fragment
         View v = inflater.inflate(R.layout.fragment_one_to_one, container, false);
 
+        FirebaseApp.initializeApp(getActivity().getApplicationContext());
+
         recyclerView = v.findViewById(R.id.rvOne);
-        messageAdapter = new MessageAdapter(getContext(), chatData);
         etMessage = v.findViewById(R.id.etSendMessage);
         btnSend = v.findViewById(R.id.btnSend);
         btnCamera = v.findViewById(R.id.btnCamera);
@@ -128,13 +148,14 @@ public class OneToOneFragment extends Fragment {
 
 
         LinearLayoutManager manager = new LinearLayoutManager(getContext());
-
         recyclerView.setLayoutManager(manager);
+        messageAdapter = new MessageAdapter(getContext(), chatData);
         recyclerView.setAdapter(messageAdapter);
+
+        storageReference = FirebaseStorage.getInstance().getReference();
 
         //connection
         setConnection();
-
 
         btnSend.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -142,16 +163,29 @@ public class OneToOneFragment extends Fragment {
                 String messagePesan = etMessage.getText().toString();
                 if (messagePesan.length() > 0) {
 
-                    //send message to ? Reciever
-                    sendMessage(messagePesan, RECIEVER + "@desktop-m97vqsb");
+                    sendMessage(messagePesan, RECIEVER + DOMAIN);
                 }
             }
         });
         btnCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                startActivityForResult(cameraIntent,CAMERA_REQUEST);
+                PickImageDialog.build(new PickSetup().setButtonOrientation(LinearLayoutCompat.HORIZONTAL)).setOnPickResult(new IPickResult() {
+                    @Override
+                    public void onPickResult(PickResult r) {
+                        if (r.getError() == null) {
+                            Bitmap bitmap =  r.getBitmap();
+
+                            sendImage(bitmap,imageName(),RECIEVER+DOMAIN);
+//              sendImage(RECIEVER+"@desktop-m97vqsb",bitmap,"percobaan");
+                            ImageData imageData = new ImageData(SENDER, bitmap);
+                            messageAdapter.addItem(imageData);
+                            recyclerView.scrollToPosition(messageAdapter.getItemCount() - 1);
+                        } else {
+                            Toast.makeText(getContext(), r.getError().getMessage(), Toast.LENGTH_LONG).show();
+                        }
+                    }
+                }).show(getFragmentManager());
             }
         });
         btnFile.setOnClickListener(new View.OnClickListener() {
@@ -183,27 +217,14 @@ public class OneToOneFragment extends Fragment {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if(resultCode==RESULT_OK){
-            if (requestCode==CAMERA_REQUEST){
-                Bitmap bitmap = (Bitmap) data.getExtras().get("data");
-                ByteArrayOutputStream stream = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.JPEG,75,stream);
-
-                try {
-                    sendImage(RECIEVER+"@desktop-m97vqsb",bitmap,"percobaan");
-                    ImageData imageData = new ImageData(SENDER, bitmap);
-                    messageAdapter.addItem(imageData);
-                    recyclerView.scrollToPosition(messageAdapter.getItemCount() - 1);
-                } catch (XMPPException e) {
-                    e.printStackTrace();
-                }
-            }
-            else if (requestCode==FILE_REQUEST){
+            if (requestCode==FILE_REQUEST){
                 ArrayList<MediaFile> files = data.getParcelableArrayListExtra(FilePickerActivity.MEDIA_FILES);
                 Log.i("Bangsat",files.get(0).getPath());
                 File file = new File(files.get(0).getPath());
                 Log.i("Bangsat", String.valueOf(file.canRead()));
 
-                sendFile(RECIEVER+"@desktop-m97vqsb",file,file.getName());
+//                sendFile(RECIEVER+"@desktop-m97vqsb",file,file.getName());
+                sendFile(file,file.getName(),RECIEVER+DOMAIN);
                 FileData fileData = new FileData(SENDER,file.getName(),file);
                 messageAdapter.addItem(fileData);
                 recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
@@ -225,10 +246,11 @@ public class OneToOneFragment extends Fragment {
     }
 
 
-    private void sendMessage(String messagePesan, String user) {
+
+    private void sendMessage(String message, String bareJid) {
         EntityBareJid jid = null;
         try {
-            jid = JidCreate.entityBareFrom(user);
+            jid = JidCreate.entityBareFrom(bareJid);
         } catch (XmppStringprepException e) {
             e.printStackTrace();
         }
@@ -237,11 +259,10 @@ public class OneToOneFragment extends Fragment {
             ChatManager chatManager = ChatManager.getInstanceFor(connection);
             Chat chat = chatManager.chatWith(jid);
             Message newMessage = new Message();
-            newMessage.setBody(messagePesan);
+            newMessage.setBody(message);
             try {
                 chat.send(newMessage);
-
-                MessageData data = new MessageData(SENDER, messagePesan);
+                MessageData data = new MessageData(SENDER, message);
                 messageAdapter.addItem(data);
                 recyclerView.scrollToPosition(messageAdapter.getItemCount() - 1);
                 etMessage.getText().clear();
@@ -252,54 +273,240 @@ public class OneToOneFragment extends Fragment {
             }
         }
     }
-
-    private void oldMessage(String user) {
+    private void sendMessageFile(String message, String bareJid) {
         EntityBareJid jid = null;
         try {
-            jid = JidCreate.entityBareFrom(user);
+            jid = JidCreate.entityBareFrom(bareJid);
         } catch (XmppStringprepException e) {
             e.printStackTrace();
         }
-        MamManager manager = MamManager.getInstanceFor(connection);
-        MamManager.MamQueryResult r = null;
-        try {
-            r = manager.mostRecentPage(jid, 10);
-        } catch (XMPPException.XMPPErrorException e) {
-            Log.i("ini",e.getMessage());
-        } catch (SmackException.NotLoggedInException e) {
-            e.printStackTrace();
-        } catch (SmackException.NotConnectedException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (SmackException.NoResponseException e) {
-            e.printStackTrace();
-        }
-        if (r.forwardedMessages.size() >= 1) //printing first of them
-        {
-            for (int i = 0; i < r.forwardedMessages.size(); i++) {
-                Message message = (Message) r.forwardedMessages.get(i).getForwardedStanza();
-                Log.i("mam", "message received" + message.getBody());
 
-                final MessageData data = new MessageData(message.getFrom().toString().split("@")[0], message.getBody());
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        messageAdapter.addItem(data);
-                    }
-                });
+        if (connection != null) {
+            ChatManager chatManager = ChatManager.getInstanceFor(connection);
+            Chat chat = chatManager.chatWith(jid);
+            Message newMessage = new Message();
+            newMessage.setBody(message);
+            try {
+                chat.send(newMessage);
+            } catch (SmackException.NotConnectedException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
+        }
+    }
+    private void receiveMessage(){
+        ChatManager chatManager = ChatManager.getInstanceFor(connection);
+        chatManager.addIncomingListener(new IncomingChatMessageListener() {
+            @Override
+            public void newIncomingMessage(EntityBareJid from, final Message message, final Chat chat) {
+                Log.i(TAG, "New message from " + from + " : " + message.getBody());
+                final String m = message.getBody();
+                if (m.split("@@").length>1){
+                    final Bitmap[] my_image = new Bitmap[1];
+                    Log.i("coba","@@");
+                    final File localFile;
+                    try {
+                        localFile = File.createTempFile("Images", "jpg");
+                        Log.i("coba 1", String.valueOf(messageAdapter.getItemCount()));
+                        storageReference.child("chatImage").child(m.split("@@")[0]+".jpg").getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                            @Override
+                            public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                Log.i("coba", String.valueOf(taskSnapshot.getTotalByteCount()));
+                                my_image[0] = BitmapFactory.decodeFile(localFile.getAbsolutePath());
+                                final ImageData imageData = new ImageData(message.getFrom().toString().split("@")[0],my_image[0]);
+                                getActivity().runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        messageAdapter.addItem(imageData);
+                                        recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
+                                    }
+                                });
+                            }
+                        });
+                        Log.i("coba 3", String.valueOf(messageAdapter.getItemCount()));
+                    } catch (IOException e) {
+                        Log.i("coba",e.getMessage());
+                    }
+                }else if (m.split("##").length>1){
+                    Log.i("coba","##");
+                    try {
+                        final File localFile = File.createTempFile("File",m.split("##")[0].split("\\.")[m.split("##")[0].split("\\.").length-1]);
+                        storageReference.child("chatFile").child(m).getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                            @Override
+                            public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                final FileData fileData = new FileData(message.getFrom().toString().split("@")[0],localFile.getName(),localFile);
+                                getActivity().runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        messageAdapter.addItem(fileData);
+                                        recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
+                                    }
+                                });
+                            }
+                        });
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }else {
+                    Log.i("coba","lain");
+                    final MessageData messageData = new MessageData(message.getFrom().toString().split("@")[0],m);
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            messageAdapter.addItem(messageData);
+                            recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
+                        }
+                    });
+                }
+            }
+        });
+    }
 
+    private void receiveOldMessage(String bareJid) {
+        if (connection!=null){
+            EntityBareJid jid = null;
+            try {
+                jid = JidCreate.entityBareFrom(bareJid);
+            } catch (XmppStringprepException e) {
+                e.printStackTrace();
+            }
+            MamManager manager = MamManager.getInstanceFor(connection);
+            MamManager.MamQueryResult r = null;
+            try {
+                r = manager.mostRecentPage(jid, 10);
+            } catch (XMPPException.XMPPErrorException e) {
+                Log.i("ini",e.getMessage());
+            } catch (SmackException.NotLoggedInException e) {
+                e.printStackTrace();
+            } catch (SmackException.NotConnectedException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (SmackException.NoResponseException e) {
+                e.printStackTrace();
+            }
+            if (r.forwardedMessages.size() >= 1) //printing first of them
+            {
+                for (int i = 0; i < r.forwardedMessages.size(); i++) {
+                    final Message message = (Message) r.forwardedMessages.get(i).getForwardedStanza();
+                    String m = message.getBody();
+                    Log.i("mam", "message received" + message.getBody());
+                    final MessageData data = new MessageData(message.getFrom().toString().split("@")[0], message.getBody());
+                    if (m.split("@@").length>1){
+                        final Bitmap[] my_image = new Bitmap[1];
+                        Log.i("coba","@@");
+                        final File localFile;
+                        try {
+                            localFile = File.createTempFile("Images", "jpg");
+                            Log.i("coba 1", String.valueOf(messageAdapter.getItemCount()));
+                            storageReference.child("chatImage").child(m.split("@@")[0]+".jpg").getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                                @Override
+                                public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                    Log.i("coba", String.valueOf(taskSnapshot.getTotalByteCount()));
+                                    my_image[0] = BitmapFactory.decodeFile(localFile.getAbsolutePath());
+
+                                    final ImageData imageData = new ImageData(message.getFrom().toString().split("@")[0],my_image[0]);
+                                    getActivity().runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            messageAdapter.addItem(imageData);
+                                            recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
+                                        }
+                                    });
+                                }
+                            });
+                            Log.i("coba 3", String.valueOf(messageAdapter.getItemCount()));
+                        } catch (IOException e) {
+                            Log.i("coba",e.getMessage());
+                        }
+                    }else if (m.split("##").length>1){
+                        Log.i("coba","##");
+                        try {
+                            final File localFile = File.createTempFile("File",m.split("##")[0].split("\\.")[m.split("##")[0].split("\\.").length-1]);
+                            Log.i("Bangsat",m.split("##")[0]);
+                            storageReference.child("chatFile").child(m.split("##")[0]).getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                                @Override
+                                public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                    final FileData fileData = new FileData(message.getFrom().toString().split("@")[0],localFile.getName(),localFile);
+                                    getActivity().runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            messageAdapter.addItem(fileData);
+                                            recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
+                                        }
+                                    });
+                                }
+                            });
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }else {
+                        Log.i("coba","lain");
+                        final MessageData messageData = new MessageData(message.getFrom().toString().split("@")[0],m);
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                messageAdapter.addItem(messageData);
+                                recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
+                            }
+                        });
+                    }
+                }
+
+            }
         }
     }
 
-    private void sendFile(String user) {
 
+
+    private void sendImage(Bitmap image, final String message, final String bareJid){
+        StorageReference mountainImagesRef = storageReference.child("chatImage/" + message + ".jpg");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        image.compress(Bitmap.CompressFormat.JPEG, 20, baos);
+        byte[] data = baos.toByteArray();
+        UploadTask uploadTask = mountainImagesRef.putBytes(data);
+        uploadTask.addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception exception) {
+                // Handle unsuccessful uploads
+            }
+        }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+            @Override
+            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
+                String from = SENDER+"_"+RECIEVER;
+                sendMessageFile(message+"@@"+from,bareJid);
+            }
+        });
+    }
+
+    private void sendFile(File file, final String message, final String bareJid){
+        StorageReference mountainImagesRef = storageReference.child("chatFile/" + message);
+        byte[] data = new byte[0];
+        try {
+            data = FileUtils.readFileToByteArray(file);
+            UploadTask uploadTask = mountainImagesRef.putBytes(data);
+            uploadTask.addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(@NonNull Exception exception) {
+                    // Handle unsuccessful uploads
+                }
+            }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                @Override
+                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                    // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
+                    String from = SENDER+"_"+RECIEVER;
+                    sendMessageFile(message+"##"+from,bareJid);
+                }
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
     }
 
     private void setConnection() {
-        // Create the configuration for this new connection
 
         new Thread() {
             @Override
@@ -307,7 +514,6 @@ public class OneToOneFragment extends Fragment {
 
                 InetAddress addr = null;
                 try {
-                    //inter ip4
                     addr = InetAddress.getByName(IPV4);
                 } catch (UnknownHostException e) {
                     e.printStackTrace();
@@ -351,58 +557,33 @@ public class OneToOneFragment extends Fragment {
                     if (connection.isAuthenticated() && connection.isConnected()) {
                         Log.e(TAG, "run : auth done and connect success");
 
-                        //get history chat
-//                        oldMessage(RECIEVER + "@desktop-m97vqsb");
+                        receiveOldMessage(RECIEVER+DOMAIN);
+                        receiveMessage();
 
-// Assume we've created an XMPPConnection name "connection"._
-                        ChatManager chatManager = ChatManager.getInstanceFor(connection);
-                        chatManager.addIncomingListener(new IncomingChatMessageListener() {
-                            @Override
-                            public void newIncomingMessage(EntityBareJid from, final Message message, Chat chat) {
-                                Log.i(TAG, "New message from " + from + " : " + message.getBody());
+
+
+
+//                        FileTransferManager manager = FileTransferManager.getInstanceFor(connection);
+//                        manager.addFileTransferListener(new FileTransferListener() {
+//                            @Override
+//                            public void fileTransferRequest(final FileTransferRequest request) {
+//                                Log.i("Namanya","masuk");
+//                                final IncomingFileTransfer transfer = request.accept();
+//
+////                                final File file = new File(mf.getAbsoluteFile()+"/Chat/" + transfer.getFileName());
+//
 //                                getActivity().runOnUiThread(new Runnable() {
 //                                    @Override
 //                                    public void run() {
 //
+//                                            File file = new File(request.getFileName());
+//                                            FileData fileData = new FileData("coba",file.getName(),file);
+//                                            messageAdapter.addItem(fileData);
+//                                            recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
 //
-//
-//                                        try {
-//                                            MessageData data = new MessageData(RECIEVER, message.getBody().toString());
-//                                            Log.i("Ini dari incoming : ",message.getFrom().toString());
-//                                            messageAdapter.addItem(data);
-//                                            recyclerView.scrollToPosition(messageAdapter.getItemCount() - 1);
-//                                            sleep(5000);
-//                                        } catch (InterruptedException e) {
-//                                            e.printStackTrace();
-//                                        }
 //
 //                                    }
 //                                });
-
-                            }
-                        });
-
-                        FileTransferManager manager = FileTransferManager.getInstanceFor(connection);
-                        manager.addFileTransferListener(new FileTransferListener() {
-                            @Override
-                            public void fileTransferRequest(final FileTransferRequest request) {
-                                Log.i("Namanya","masuk");
-                                final IncomingFileTransfer transfer = request.accept();
-
-//                                final File file = new File(mf.getAbsoluteFile()+"/Chat/" + transfer.getFileName());
-
-                                getActivity().runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-
-                                            File file = new File(request.getFileName());
-                                            FileData fileData = new FileData("coba",file.getName(),file);
-                                            messageAdapter.addItem(fileData);
-                                            recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
-
-
-                                    }
-                                });
 //                                InputStream inputStream = null;
 //                                try {
 //                                    inputStream = transfer.recieveFile();
@@ -425,9 +606,9 @@ public class OneToOneFragment extends Fragment {
 
 
 
-
-                            }
-                        });
+//
+//                            }
+//                        });
 
 
 
@@ -498,10 +679,10 @@ public class OneToOneFragment extends Fragment {
             final OutgoingFileTransfer transfer = manager.createOutgoingFileTransfer(jid);
             // Send the file
 //            transfer.sendFile(new File("abc.txt"), "You won't believe this!");
-//            transfer.sendStream(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), filename, file.length(), "A greeting");
+            transfer.sendStream(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), filename, file.length(), "A greeting");
 
 
-            transfer.sendFile(file,"A greeting");
+//            transfer.sendFile(file,"A greeting");
 
 //            transfer.sendStream(bytesStream,filename,file.length(),"A greeting");
 //            transfer.sendStream(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), filename, file.length(), "A greeting");
@@ -516,6 +697,11 @@ public class OneToOneFragment extends Fragment {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         bmp.compress(Bitmap.CompressFormat.PNG, 100, stream);
         return stream.toByteArray();
+    }
+    private String imageName(){
+        Date date = new Date();
+        String s = date.getYear()+""+date.getMonth()+""+date.getDay()+"_"+date.getHours()+""+date.getMinutes()+""+date.getSeconds();
+        return s;
     }
 
 
