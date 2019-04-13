@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:padding="10dp"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:layout_centerHorizontal="true"
+        android:text="Title"
+        android:id="@+id/tvTitleNickname"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <EditText
+        android:layout_marginTop="10dp"
+        android:hint="username"
+        android:id="@+id/etNicknameInvite"
+        android:layout_below="@id/tvTitleNickname"
+        android:layout_width="match_parent"
+        android:layout_height="50dp" />
+
+    <LinearLayout
+        android:layout_marginTop="20dp"
+        android:layout_below="@id/etNicknameInvite"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <Button
+            android:id="@+id/btnRejectInvite"
+            android:text="Cancel"
+            android:textColor="@color/colorWhite"
+            android:background="@color/colorAccent"
+            android:layout_width="0dp"
+            android:layout_marginRight="10dp"
+            android:layout_weight="1"
+            android:layout_height="40dp" />
+
+        <Button
+            android:id="@+id/btnAcceptInvite"
+            android:layout_marginLeft="10dp"
+            android:background="@color/colorPrimary"
+            android:textColor="@color/colorWhite"
+            android:text="Invite"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="40dp" />
+    </LinearLayout>
+</RelativeLayout>

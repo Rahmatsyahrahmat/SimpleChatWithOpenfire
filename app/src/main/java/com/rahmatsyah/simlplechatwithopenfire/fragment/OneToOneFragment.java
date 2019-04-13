@@ -1,19 +1,12 @@
 package com.rahmatsyah.simlplechatwithopenfire.fragment;
 
 
-import android.Manifest;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.LinearLayoutCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -25,15 +18,12 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.storage.FileDownloadTask;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.StreamDownloadTask;
 import com.google.firebase.storage.UploadTask;
 import com.jaiselrahman.filepicker.activity.FilePickerActivity;
 import com.jaiselrahman.filepicker.config.Configurations;
@@ -50,9 +40,6 @@ import com.vansuita.pickimage.dialog.PickImageDialog;
 import com.vansuita.pickimage.listeners.IPickResult;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.jivesoftware.smack.AbstractXMPPConnection;
 import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.SmackException;
@@ -63,30 +50,16 @@ import org.jivesoftware.smack.chat2.IncomingChatMessageListener;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
-import org.jivesoftware.smackx.filetransfer.FileTransferListener;
-import org.jivesoftware.smackx.filetransfer.FileTransferManager;
-import org.jivesoftware.smackx.filetransfer.FileTransferNegotiator;
-import org.jivesoftware.smackx.filetransfer.FileTransferRequest;
-import org.jivesoftware.smackx.filetransfer.IncomingFileTransfer;
-import org.jivesoftware.smackx.filetransfer.OutgoingFileTransfer;
 import org.jivesoftware.smackx.mam.MamManager;
 import org.jxmpp.jid.DomainBareJid;
 import org.jxmpp.jid.EntityBareJid;
-import org.jxmpp.jid.EntityFullJid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.jid.parts.Resourcepart;
 import org.jxmpp.stringprep.XmppStringprepException;
-import org.jxmpp.util.XmppStringUtils;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FilePermission;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -110,8 +83,6 @@ public class OneToOneFragment extends Fragment{
     private static final String DOMAIN = "@desktop-m97vqsb";
 
     private static final int FILE_REQUEST = 2888;
-
-    private boolean isReceive = false;
 
     private RecyclerView recyclerView;
     private MessageAdapter messageAdapter;
@@ -177,7 +148,6 @@ public class OneToOneFragment extends Fragment{
                             Bitmap bitmap =  r.getBitmap();
 
                             sendImage(bitmap,imageName(),RECIEVER+DOMAIN);
-//              sendImage(RECIEVER+"@desktop-m97vqsb",bitmap,"percobaan");
                             ImageData imageData = new ImageData(SENDER, bitmap);
                             messageAdapter.addItem(imageData);
                             recyclerView.scrollToPosition(messageAdapter.getItemCount() - 1);
@@ -191,12 +161,6 @@ public class OneToOneFragment extends Fragment{
         btnFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-//                Intent chooseFile;
-//                Intent intent;
-//                chooseFile = new Intent(Intent.ACTION_GET_CONTENT);
-//                chooseFile.setType("*/*");
-//                intent = Intent.createChooser(chooseFile, "Choose a file");
-//                startActivityForResult(intent, FILE_REQUEST);
 
                 Intent intent = new Intent(getContext(), FilePickerActivity.class);
                 intent.putExtra(FilePickerActivity.CONFIGS, new Configurations.Builder()
@@ -223,29 +187,13 @@ public class OneToOneFragment extends Fragment{
                 File file = new File(files.get(0).getPath());
                 Log.i("Bangsat", String.valueOf(file.canRead()));
 
-//                sendFile(RECIEVER+"@desktop-m97vqsb",file,file.getName());
                 sendFile(file,file.getName(),RECIEVER+DOMAIN);
                 FileData fileData = new FileData(SENDER,file.getName(),file);
                 messageAdapter.addItem(fileData);
                 recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
-//                Uri uri = data.getData();
-//                Log.i("Bangsat",data.getData().getPath());
-//                File file =  new File(data.getData().getPath().split(":")[1]);
-//                Log.i("Bangsat", String.valueOf(file.exists()));
-//                Log.i("Bangsat", String.valueOf(file.setExecutable(true,false)));
-//                Log.i("Bangsat", String.valueOf(file.canRead()));
-//
-//
-//
-//                sendFile(RECIEVER+"@desktop-m97vqsb",file,file.getName());
-//                FileData fileData = new FileData(SENDER,file.getName(),file);
-//                messageAdapter.addItem(fileData);
-//                recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
             }
         }
     }
-
-
 
     private void sendMessage(String message, String bareJid) {
         EntityBareJid jid = null;
@@ -459,7 +407,6 @@ public class OneToOneFragment extends Fragment{
     }
 
 
-
     private void sendImage(Bitmap image, final String message, final String bareJid){
         StorageReference mountainImagesRef = storageReference.child("chatImage/" + message + ".jpg");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -469,12 +416,10 @@ public class OneToOneFragment extends Fragment{
         uploadTask.addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception exception) {
-                // Handle unsuccessful uploads
             }
         }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
             @Override
             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
                 String from = SENDER+"_"+RECIEVER;
                 sendMessageFile(message+"@@"+from,bareJid);
             }
@@ -490,12 +435,11 @@ public class OneToOneFragment extends Fragment{
             uploadTask.addOnFailureListener(new OnFailureListener() {
                 @Override
                 public void onFailure(@NonNull Exception exception) {
-                    // Handle unsuccessful uploads
+
                 }
             }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                 @Override
                 public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                    // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
                     String from = SENDER+"_"+RECIEVER;
                     sendMessageFile(message+"##"+from,bareJid);
                 }
@@ -546,8 +490,6 @@ public class OneToOneFragment extends Fragment{
                     e.printStackTrace();
                 }
 
-
-
                 connection = new XMPPTCPConnection(config);
 
                 try {
@@ -559,59 +501,6 @@ public class OneToOneFragment extends Fragment{
 
                         receiveOldMessage(RECIEVER+DOMAIN);
                         receiveMessage();
-
-
-
-
-//                        FileTransferManager manager = FileTransferManager.getInstanceFor(connection);
-//                        manager.addFileTransferListener(new FileTransferListener() {
-//                            @Override
-//                            public void fileTransferRequest(final FileTransferRequest request) {
-//                                Log.i("Namanya","masuk");
-//                                final IncomingFileTransfer transfer = request.accept();
-//
-////                                final File file = new File(mf.getAbsoluteFile()+"/Chat/" + transfer.getFileName());
-//
-//                                getActivity().runOnUiThread(new Runnable() {
-//                                    @Override
-//                                    public void run() {
-//
-//                                            File file = new File(request.getFileName());
-//                                            FileData fileData = new FileData("coba",file.getName(),file);
-//                                            messageAdapter.addItem(fileData);
-//                                            recyclerView.scrollToPosition(messageAdapter.getItemCount()-1);
-//
-//
-//                                    }
-//                                });
-//                                InputStream inputStream = null;
-//                                try {
-//                                    inputStream = transfer.recieveFile();
-//                                    final Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-//
-//                                    getActivity().runOnUiThread(new Runnable() {
-//                                        @Override
-//                                        public void run() {
-//                                            ImageData imageData = new ImageData("coba",bitmap);
-//                                            messageAdapter.addItem(imageData);
-//                                        }
-//                                    });
-//                                } catch (SmackException e) {
-//                                    e.printStackTrace();
-//                                } catch (XMPPException.XMPPErrorException e) {
-//                                    e.printStackTrace();
-//                                } catch (InterruptedException e) {
-//                                    e.printStackTrace();
-//                                }
-
-
-
-//
-//                            }
-//                        });
-
-
-
                     }
                 } catch (
                         SmackException e)
@@ -637,72 +526,12 @@ public class OneToOneFragment extends Fragment{
 
             }
         }.
-
                 start();
 
-
-
-    }
-
-    public void sendImage(String user, Bitmap bitmap, String filename) throws XMPPException {
-
-
-        EntityFullJid jid = null;
-        try {
-            jid = JidCreate.entityFullFrom(user+"/"+RESOURCE);
-            Log.i("coba",jid.toString());
-            FileTransferManager manager = FileTransferManager.getInstanceFor(connection);
-            // Create the outgoing file transfer
-            final OutgoingFileTransfer transfer = manager.createOutgoingFileTransfer(jid);
-            // Send the file
-            //transfer.sendFile(new File("abc.txt"), "You won't believe this!");
-            transfer.sendStream(new ByteArrayInputStream(convertFileToByte(bitmap)), filename, convertFileToByte(bitmap).length, "A greeting");
-        } catch (Exception e) {
-            Log.i("hyhy",e.getMessage());
-        }
-
-//        String destination = roster.getPresence(jid).getFrom();
-        // Create the file transfer manager
-
-
-    }
-    public void sendFile(String user, File file, String filename){
-        EntityFullJid jid = null;
-        try {
-            jid = JidCreate.entityFullFrom(user+"/"+RESOURCE);
-            Log.i("coba",jid.toString());
-            FileTransferManager manager = FileTransferManager.getInstanceFor(connection);
-
-
-            FileTransferNegotiator.getInstanceFor(connection);
-            // Create the outgoing file transfer
-            final OutgoingFileTransfer transfer = manager.createOutgoingFileTransfer(jid);
-            // Send the file
-//            transfer.sendFile(new File("abc.txt"), "You won't believe this!");
-            transfer.sendStream(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), filename, file.length(), "A greeting");
-
-
-//            transfer.sendFile(file,"A greeting");
-
-//            transfer.sendStream(bytesStream,filename,file.length(),"A greeting");
-//            transfer.sendStream(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), filename, file.length(), "A greeting");
-
-
-
-        } catch (Exception e) {
-            Log.i("Bangsat",e.getMessage());
-        }
-    }
-    public byte[] convertFileToByte(Bitmap bmp) {
-        ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        bmp.compress(Bitmap.CompressFormat.PNG, 100, stream);
-        return stream.toByteArray();
     }
     private String imageName(){
         Date date = new Date();
         String s = date.getYear()+""+date.getMonth()+""+date.getDay()+"_"+date.getHours()+""+date.getMinutes()+""+date.getSeconds();
         return s;
     }
-
-
 }
